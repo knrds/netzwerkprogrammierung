@@ -1,0 +1,18 @@
+# Kompilierte Programme
+echo_client
+echo_server
+echo_client_connected
+*.o
+*.exe
+
+# Temporäre Dateien
+build/
+.cache/
+.vscode/ipch/
+
+# Autotools / generierte Dateien
+autom4te.cache/
+*.log
+*.status
+.deps/
+.libs/
