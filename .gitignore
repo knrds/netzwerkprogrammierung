@@ -16,3 +16,4 @@ autom4te.cache/
 *.status
 .deps/
 .libs/
+/Vorlesung/
