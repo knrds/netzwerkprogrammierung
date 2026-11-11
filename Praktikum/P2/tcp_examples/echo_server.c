@@ -58,6 +58,7 @@ static void *handle_client(void *arg)
 
         } else if (n == 0) {
             // Client closed its sending direction.
+            shutdown(client_fd, SHUT_RDWR);
             break;
 
         } else {

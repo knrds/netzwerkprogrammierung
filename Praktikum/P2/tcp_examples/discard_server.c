@@ -11,6 +11,7 @@
 
 #define PORT 9009
 #define BUFFER_SIZE 4096
+#define MAX_CLIENTS 100
 
 int main(void)
 {
@@ -33,7 +34,6 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    // select() uses a limited descriptor set
     if (listen_fd >= FD_SETSIZE) {
         fprintf(stderr, "Socket descriptor too large\n");
         close(listen_fd);
@@ -78,27 +78,38 @@ int main(void)
     int max_fd = listen_fd;
     char buffer[BUFFER_SIZE];
 
+    int client_fds[MAX_CLIENTS];
+
+    for (int i = 0; i < MAX_CLIENTS; i++)
+        client_fds[i] = -1;
+
     // 6. Main server loop
     while (1) {
+
         // select() modifies its descriptor set
         read_fds = all_fds;
+
         int ready = select(max_fd + 1,
                            &read_fds,
                            NULL, NULL, NULL);
+
         if (ready == -1) {
             if (errno == EINTR)
                 continue;
+
             perror("select");
             break;
         }
 
         // 7. Check all monitored descriptors
         for (int fd = 0; fd <= max_fd; fd++) {
+
             if (!FD_ISSET(fd, &read_fds))
                 continue;
 
             // A new client wants to connect
             if (fd == listen_fd) {
+
                 int client_fd = accept(
                     listen_fd, NULL, NULL
                 );
@@ -109,41 +120,75 @@ int main(void)
                     continue;
                 }
 
-                if (client_fd >= FD_SETSIZE) {
-                    fprintf(stderr,
-                            "Too many descriptors\n");
+                
+
+                // Client im Array speichern
+                int i;
+
+                for (i = 0; i < MAX_CLIENTS; i++) {
+                    if (client_fds[i] == -1) {
+                        client_fds[i] = client_fd;
+                        break;
+                    }
+                }
+
+                if (i == MAX_CLIENTS) {
+                    fprintf(stderr, "Maximum clients reached\n");
                     close(client_fd);
                     continue;
                 }
 
                 FD_SET(client_fd, &all_fds);
+
                 if (client_fd > max_fd)
                     max_fd = client_fd;
+
                 printf("Client connected: fd=%d\n",
                        client_fd);
 
             } else {
+
                 // Data from an existing client
                 ssize_t n = recv(
                     fd, buffer, sizeof(buffer), 0
                 );
 
                 if (n > 0) {
+
                     // Discard data: no send()!
                     printf("Discarded %zd bytes "
                            "from client %d\n", n, fd);
-                           
+
                 } else if (n == 0) {
+
                     // Client closed connection
                     printf("Client disconnected: fd=%d\n",
                            fd);
+
                     close(fd);
                     FD_CLR(fd, &all_fds);
 
+                    // lient aus Array entfernen
+                    for (int i = 0; i < MAX_CLIENTS; i++) {
+                        if (client_fds[i] == fd) {
+                            client_fds[i] = -1;
+                            break;
+                        }
+                    }
+
                 } else if (errno != EINTR) {
+
                     perror("recv");
                     close(fd);
                     FD_CLR(fd, &all_fds);
+
+                    //Client aus Array entfernen
+                    for (int i = 0; i < MAX_CLIENTS; i++) {
+                        if (client_fds[i] == fd) {
+                            client_fds[i] = -1;
+                            break;
+                        }
+                    }
                 }
             }
         }

@@ -170,8 +170,7 @@ int main(int argc, char *argv[])
         }
 
         // 7. Handle keyboard input
-        if (stdin_open &&
-            FD_ISSET(STDIN_FILENO, &readfds))
+        if (FD_ISSET(STDIN_FILENO, &readfds))
         {
             ssize_t n = read(STDIN_FILENO,
                              buffer,

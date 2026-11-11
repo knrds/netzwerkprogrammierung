@@ -108,9 +108,41 @@ int main(void)
             }
         }
 
-        if (close(client) == -1)
-            perror("close client");
+
+
+        if (shutdown(client, SHUT_WR) == -1)
+			perror("shutdown client");
+			
+		// Auf das FIN des Clients warten
+		char ack_buffer[128];
+
+		for (;;) {
+			ssize_t n = recv(client,
+                     ack_buffer,
+                     sizeof(ack_buffer),
+                     0);
+
+			if (n == 0) {
+				printf("Client closed its sending direction.\n");
+				break;
+			}
+
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				perror("recv");
+				break;
+		}
+
+		printf("Received %zd unexpected bytes from client\n", n);
+		}
+
+		// Socket freigeben
+		if (close(client) == -1)
+		perror("close client");
     }
+
+
 
     close(fd);
     return EXIT_FAILURE;
