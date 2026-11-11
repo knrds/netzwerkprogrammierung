@@ -1,25 +1,22 @@
-
 CC = cc
-CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Wpedantic
+CFLAGS = -Wall -Wextra -std=c11
 
 all: client daytime_server discard_server echo_server
 
-client: client.c
-	$(CC) $(CFLAGS) -o client client.c
+client:
+	$(CC) $(CFLAGS) client.c -o client
 
-daytime_server: daytime_server.c
-	$(CC) $(CFLAGS) -o daytime_server daytime_server.c
+daytime_server:
+	$(CC) $(CFLAGS) daytime_server.c -o daytime_server
 
-discard_server: discard_server.c
-	$(CC) $(CFLAGS) -o discard_server discard_server.c
+discard_server:
+	$(CC) $(CFLAGS) discard_server.c -o discard_server
 
-echo_server: echo_server.c
-	$(CC) $(CFLAGS) -pthread -o echo_server echo_server.c
+echo_server:
+	$(CC) $(CFLAGS) -pthread echo_server.c -o echo_server
 
 clean:
 	rm -f client daytime_server discard_server echo_server
-
-.PHONY: all clean
 
 
 # Alle vier Programme kompilieren

@@ -80,31 +80,25 @@ int main(void)
 
     // 6. Main server loop
     while (1) {
-
         // select() modifies its descriptor set
         read_fds = all_fds;
-
         int ready = select(max_fd + 1,
                            &read_fds,
                            NULL, NULL, NULL);
-
         if (ready == -1) {
             if (errno == EINTR)
                 continue;
-
             perror("select");
             break;
         }
 
         // 7. Check all monitored descriptors
         for (int fd = 0; fd <= max_fd; fd++) {
-
             if (!FD_ISSET(fd, &read_fds))
                 continue;
 
             // A new client wants to connect
             if (fd == listen_fd) {
-
                 int client_fd = accept(
                     listen_fd, NULL, NULL
                 );
@@ -123,37 +117,30 @@ int main(void)
                 }
 
                 FD_SET(client_fd, &all_fds);
-
                 if (client_fd > max_fd)
                     max_fd = client_fd;
-
                 printf("Client connected: fd=%d\n",
                        client_fd);
 
             } else {
-
                 // Data from an existing client
                 ssize_t n = recv(
                     fd, buffer, sizeof(buffer), 0
                 );
 
                 if (n > 0) {
-
                     // Discard data: no send()!
                     printf("Discarded %zd bytes "
                            "from client %d\n", n, fd);
-
+                           
                 } else if (n == 0) {
-
                     // Client closed connection
                     printf("Client disconnected: fd=%d\n",
                            fd);
-
                     close(fd);
                     FD_CLR(fd, &all_fds);
 
                 } else if (errno != EINTR) {
-
                     perror("recv");
                     close(fd);
                     FD_CLR(fd, &all_fds);

@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PORT 1313
 
@@ -35,6 +36,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+	// TCP-Verbindungen können nach dem Schließen noch eine gewisse Zeit im Zustand TIME_WAIT verbleiben. 
     int reuse = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
                    &reuse, sizeof(reuse)) == -1) {
@@ -43,6 +45,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+
     if (bind(fd, (struct sockaddr *)&server,
              sizeof(server)) == -1) {
         perror("bind");
@@ -50,11 +53,13 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+	// Kann nur Max 5 Clients queuen.
     if (listen(fd, 5) == -1) {
         perror("listen");
         close(fd);
         return EXIT_FAILURE;
     }
+
 
     printf("Daytime server listening on port %d\n", PORT);
 

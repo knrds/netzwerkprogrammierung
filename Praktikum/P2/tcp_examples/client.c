@@ -14,12 +14,12 @@
 
 #define BUFFER_SIZE 4096
 
+
 // Sendet alle angeforderten Bytes.
 // send() darf weniger Bytes senden als verlangt.
 static int send_all(int fd, const char *buf, size_t len)
 {
     size_t total = 0;
-
     while (total < len)
     {
         ssize_t n = send(fd, buf + total, len - total, 0);
@@ -33,21 +33,19 @@ static int send_all(int fd, const char *buf, size_t len)
                 perror("send");
             else
                 fprintf(stderr, "send returned 0\n");
-
             return -1;
         }
 
         total += (size_t)n;
     }
-
     return 0;
 }
+
 
 // Gibt alle empfangenen Bytes auf stdout aus.
 static int write_all(int fd, const char *buf, size_t len)
 {
     size_t total = 0;
-
     while (total < len)
     {
         ssize_t n = write(fd, buf + total, len - total);
@@ -61,15 +59,13 @@ static int write_all(int fd, const char *buf, size_t len)
                 perror("write");
             else
                 fprintf(stderr, "write returned 0\n");
-
             return -1;
         }
-
         total += (size_t)n;
     }
-
     return 0;
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -81,6 +77,7 @@ int main(int argc, char *argv[])
                 argv[0]);
         return EXIT_FAILURE;
     }
+
 
     // 2. Read port number
     char *end = NULL;
@@ -94,14 +91,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Invalid port number: %s\n", argv[2]);
         return EXIT_FAILURE;
     }
+    
 
     // 3. Prepare server address
     struct sockaddr_in server = {0};
-
 #ifdef __FreeBSD__
     server.sin_len = sizeof(server);
 #endif
-
     server.sin_family = AF_INET;
     server.sin_port = htons((uint16_t)port);
 
@@ -112,6 +108,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+
     // 4. Create TCP socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -120,14 +117,7 @@ int main(int argc, char *argv[])
         perror("socket");
         return EXIT_FAILURE;
     }
-
-    // Prevent process termination from SIGPIPE
-    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
-    {
-        perror("signal");
-        close(sockfd);
-        return EXIT_FAILURE;
-    }
+    
 
     // 5. Connect to server
     if (connect(sockfd,
@@ -138,8 +128,8 @@ int main(int argc, char *argv[])
         close(sockfd);
         return EXIT_FAILURE;
     }
-
     fprintf(stderr, "Connected to %s:%ld\n", argv[1], port);
+
 
     // 6. Main communication loop
     char buffer[BUFFER_SIZE];
@@ -149,7 +139,6 @@ int main(int argc, char *argv[])
     while (1)
     {
         fd_set readfds;
-
         FD_ZERO(&readfds);
 
         // Always monitor server socket
@@ -160,7 +149,6 @@ int main(int argc, char *argv[])
         {
             FD_SET(STDIN_FILENO, &readfds);
         }
-
         int maxfd = sockfd > STDIN_FILENO
                         ? sockfd
                         : STDIN_FILENO;
@@ -171,7 +159,6 @@ int main(int argc, char *argv[])
                            NULL,
                            NULL,
                            NULL);
-
         if (ready < 0)
         {
             if (errno == EINTR)
@@ -189,7 +176,6 @@ int main(int argc, char *argv[])
             ssize_t n = read(STDIN_FILENO,
                              buffer,
                              sizeof(buffer));
-
             if (n < 0)
             {
                 if (errno == EINTR)
@@ -211,7 +197,6 @@ int main(int argc, char *argv[])
                     exit_status = EXIT_FAILURE;
                     break;
                 }
-
                 fprintf(stderr,
                         "stdin closed. Waiting for server.\n");
             }
@@ -232,7 +217,6 @@ int main(int argc, char *argv[])
                              buffer,
                              sizeof(buffer),
                              0);
-
             if (n < 0)
             {
                 if (errno == EINTR)
@@ -265,6 +249,6 @@ int main(int argc, char *argv[])
         perror("close");
         return EXIT_FAILURE;
     }
-
+    
     return exit_status;
 }
