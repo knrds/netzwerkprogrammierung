@@ -16,7 +16,7 @@ discard_server: discard_server.c Socket.c Socket.h
 echo_server: echo_server.c Socket.c Socket.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ echo_server.c Socket.c
 
-chargen_server: chargen_server.c Socket.c Socket.h
+chargen_server: chargen_server.c Socket.c Socket.h ChargenOutput.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ chargen_server.c Socket.c
 
 clean:

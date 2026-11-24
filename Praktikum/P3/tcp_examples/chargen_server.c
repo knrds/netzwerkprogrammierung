@@ -4,11 +4,12 @@
 #include <errno.h>
 
 #include "Socket.h"
+#include "ChargenOutput.h"
+
+#include "Socket.h"
 
 #define PORT 9019
 #define BUFFER_SIZE 4096
-#define LINE_LENGTH 72
-#define ASCII_COUNT 95
 
 // Function executed by each client thread.
 static void *handle_client(void *arg)
@@ -16,18 +17,19 @@ static void *handle_client(void *arg)
     int client_fd = *(int *)arg;
     free(arg);
 
-    char buffer[BUFFER_SIZE]; //zum Empfang von Daten, die verworfen werden
-    char line[LINE_LENGTH + 2]; // 72 Zeichen + CR + LF (selbst erzeugte Zeichenfolge)
+    char buffer[BUFFER_SIZE]; // zum Empfang von Daten, die verworfen werden
 
     int start = 0;
 
-    if (CheckSelectFd(client_fd) == -1) {
+    if (CheckSelectFd(client_fd) == -1)
+    {
         Close(client_fd);
         return NULL;
     }
 
-    //select, damit wir bei reciving und sending nicht blockieren, wenn client nichts sendet
-    for (;;) {
+    // select, damit wir bei reciving und sending nicht blockieren, wenn client nichts sendet
+    for (;;)
+    {
         fd_set readable, writable;
 
         FD_ZERO(&readable); // empfangene Daten
@@ -37,18 +39,20 @@ static void *handle_client(void *arg)
         FD_SET(client_fd, &writable);
 
         // select, wählt die FDs aus, die bereit sind, gelesen oder geschrieben zu werden
-        int ready = Select(client_fd + 1,    
+        int ready = Select(client_fd + 1,
                            &readable, &writable,
-                           NULL, NULL);   
+                           NULL, NULL);
 
-        if (ready == -1) {
-            if (errno == EINTR) //wenn select durch ein Signal unterbrochen wurde, erneut versuchen
+        if (ready == -1)
+        {
+            if (errno == EINTR) // wenn select durch ein Signal unterbrochen wurde, erneut versuchen
                 continue;
             break;
         }
 
         // Empfangene Daten verwerfen
-        if (FD_ISSET(client_fd, &readable)) {
+        if (FD_ISSET(client_fd, &readable))
+        {
             ssize_t n = Recv(client_fd, buffer,
                              sizeof(buffer), 0);
 
@@ -57,18 +61,11 @@ static void *handle_client(void *arg)
         }
 
         // Neue Zeichenfolge erzeugen und senden
-        if (FD_ISSET(client_fd, &writable)) {
+        if (FD_ISSET(client_fd, &writable))
+        {
 
-            for (int i = 0; i < LINE_LENGTH; i++)
-                line[i] = 32 + (start + i) % ASCII_COUNT;
-
-            line[LINE_LENGTH] = '\r';
-            line[LINE_LENGTH + 1] = '\n';
-
-            if (SendAll(client_fd, line, sizeof(line)) == -1)
-                break;
-
-            start = (start + 1) % ASCII_COUNT;
+            // if (SendChargenLine(client_fd, &start) == -1) break;
+            if (SendDNA(client_fd, &start) == -1) break;
         }
     }
 
