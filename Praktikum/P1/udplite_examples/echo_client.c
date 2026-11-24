@@ -24,75 +24,58 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "Socket.h"
 
 #define BUFFER_SIZE (1 << 16)
-#define MESSAGE_SIZE (9216)
-
-// ./echo_client 127.0.0.1 20 8 Senden mit Coverage 20 & Empfangen mit Mindest-Coverage 8
-// gcc -Wall -Wextra echo_server.c Socket.c -o echo_server
-// gcc -Wall -Wextra echo_client.c Socket.c -o echo_client
+#define MESSAGE_SIZE 9216
+#define PORT 4177
 
 int main(int argc, char **argv)
 {
-	int fd;
-	struct sockaddr_in server_addr, client_addr;
-	socklen_t addr_len;
-	ssize_t len;
-	char buf[BUFFER_SIZE];
+    if (argc != 4 && argc != 5) {
+        fprintf(stderr, "Usage: %s <server-ip> <send_coverage> <recv_coverage> [bytes]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
 
-	if (argc != 4)
-	{
-		fprintf(stderr,
-				"Usage: %s <server-ip> <send_coverage> <recv_coverage>\n",
-				argv[0]);
-		return 1;
-	}
+    size_t message_size = argc == 5 ? ParseMessageSize(argv[4]) : MESSAGE_SIZE;
+    int send_coverage = ParseCoverage(argv[2]);
+    int recv_coverage = ParseCoverage(argv[3]);
 
-	int send_coverage = ParseCoverage(argv[2]);
-	int recv_coverage = ParseCoverage(argv[3]);
-
-	fd = Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE);
-
-	Setsockopt(fd, IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV,
-			   &send_coverage, sizeof(send_coverage));
-
-	Setsockopt(fd, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV,
-			   &recv_coverage, sizeof(recv_coverage));
-
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-
-#ifdef HAVE_SIN_LEN
-	server_addr.sin_len = sizeof(struct sockaddr_in);
+    struct sockaddr_in server_addr = {0};
+    server_addr.sin_family = AF_INET;
+#if defined(HAVE_SIN_LEN) || defined(__FreeBSD__) || defined(__APPLE__)
+    server_addr.sin_len = sizeof(server_addr);
 #endif
+    server_addr.sin_port = htons(PORT);
 
-	server_addr.sin_port = htons(4177);
+    if (inet_pton(AF_INET, argv[1], &server_addr.sin_addr) != 1) {
+        fprintf(stderr, "Invalid IPv4 address: %s\n", argv[1]);
+        return EXIT_FAILURE;
+    }
 
-	if ((server_addr.sin_addr.s_addr = (in_addr_t)inet_addr(argv[1])) == INADDR_NONE)
-	{
-		fprintf(stderr, "Invalid address\n");
-	}
+    int fd = Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE);
+    SetCoverage(fd, send_coverage, recv_coverage);
+    // Ein verworfenes Paket soll den Test nicht endlos blockieren.
+    struct timeval timeout = {2, 0};
+    Setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-	memset((void *)buf, 'A', sizeof(buf));
-	Sendto(fd, (const void *)buf, (size_t)MESSAGE_SIZE, 0, (const struct sockaddr *)&server_addr, sizeof(server_addr));
+    char buf[BUFFER_SIZE];
+    memset(buf, 'A', message_size);
+    Sendto(fd, buf, message_size, 0,
+           (const struct sockaddr *)&server_addr, sizeof(server_addr));
 
-	addr_len = (socklen_t)sizeof(client_addr);
+    struct sockaddr_in client_addr = {0};
+    socklen_t addr_len = sizeof(client_addr);
+    ssize_t len = Recvfrom(fd, buf, sizeof(buf), 0,
+                           (struct sockaddr *)&client_addr, &addr_len);
+    printf("Received %zd bytes from %s.\n", len, inet_ntoa(client_addr.sin_addr));
 
-	memset((void *)buf, 0, sizeof(buf));
-
-	len = Recvfrom(fd, (void *)buf, sizeof(buf), 0, (struct sockaddr *)&client_addr, &addr_len);
-
-	printf("Received %zd bytes from %s.\n", len, inet_ntoa(client_addr.sin_addr));
-
-	Close(fd);
-
-	return (0);
+    Close(fd);
+    return EXIT_SUCCESS;
 }

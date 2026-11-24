@@ -1,4 +1,4 @@
-AC_INIT(udp_examples, 1.1)
+AC_INIT(udplite_examples, 1.1)
 AC_CONFIG_SRCDIR(echo_server.c)
 AM_INIT_AUTOMAKE
 

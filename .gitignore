@@ -1,19 +1,40 @@
-# Kompilierte Programme
-echo_client
-echo_server
-echo_client_connected
-*.o
-*.exe
+# Nur Praktikum und Gitignore verwalten
+/*
+!/Praktikum/
+!/.gitignore
 
-# Temporäre Dateien
+# Kompilierte Programme
+client
+echo_client
+echo_client_connected
+echo_server
+daytime_server
+discard_server
+chargen_server
+getaddresses
+
+# Compiler und Build-Dateien
+*.o
+*.out
+*.exe
+*.d
 build/
 .cache/
-.vscode/ipch/
-
-# Autotools / generierte Dateien
+.deps/
+.libs/
 autom4te.cache/
 *.log
 *.status
-.deps/
-.libs/
-/Vorlesung/
+
+# Temporaere Dateien
+.nfs*
+._*
+.DS_Store
+core
+*.core
+
+# Persoenliche Einstellungen
+.vscode/ipch/
+*.code-profile
+.env
+.env.*

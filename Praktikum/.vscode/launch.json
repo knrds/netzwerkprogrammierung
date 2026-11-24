@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "TCP-Client (Echo)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/P2/tcp_examples/client",
+      "args": [
+        "127.0.0.1",
+        "9007"
+      ],
+      "cwd": "${workspaceFolder}/P2/tcp_examples",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "preLaunchTask": "Make: TCP"
+    },
+    {
+      "name": "TCP-Echo-Server",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/P2/tcp_examples/echo_server",
+      "args": [],
+      "cwd": "${workspaceFolder}/P2/tcp_examples",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "preLaunchTask": "Make: TCP"
+    }
+  ]
+}

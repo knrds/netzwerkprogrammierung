@@ -1,32 +1,22 @@
 CC = cc
-CFLAGS = -Wall -Wextra -std=c11
+CPPFLAGS = -D_POSIX_C_SOURCE=200809L
+CFLAGS = -g -std=c11 -Wall -Wextra -Wpedantic
 
 all: client daytime_server discard_server echo_server
 
-client:
-	$(CC) $(CFLAGS) client.c -o client
+client: client.c Socket.c Socket.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ client.c Socket.c
 
-daytime_server:
-	$(CC) $(CFLAGS) daytime_server.c -o daytime_server
+daytime_server: daytime_server.c Socket.c Socket.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ daytime_server.c Socket.c
 
-discard_server:
-	$(CC) $(CFLAGS) discard_server.c -o discard_server
+discard_server: discard_server.c Socket.c Socket.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ discard_server.c Socket.c
 
-echo_server:
-	$(CC) $(CFLAGS) -pthread echo_server.c -o echo_server
+echo_server: echo_server.c Socket.c Socket.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ echo_server.c Socket.c
 
 clean:
 	rm -f client daytime_server discard_server echo_server
 
-
-# Alle vier Programme kompilieren
-# make
-
-# Nur einen bestimmten Server kompilieren
-# make echo_server
-
-# Alle erzeugten Programme entfernen
-# make clean
-
-# Alles frisch kompilieren
-# make clean && make
+.PHONY: all clean

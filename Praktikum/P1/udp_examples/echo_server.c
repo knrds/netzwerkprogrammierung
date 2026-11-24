@@ -24,52 +24,38 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <unistd.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "Socket.h"
 
-#define BUFFER_SIZE (1<<16)   //2^16 65.536	64 KiB
+#define BUFFER_SIZE (1 << 16)
+#define PORT 4177
 
-// ./echo_server
-
-int
-main(void)
+int main(void)
 {
-	int fd;
-	struct sockaddr_in server_addr, client_addr;
-	socklen_t addr_len;
-	ssize_t len;
-	char buf[BUFFER_SIZE];
+    int fd = Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-	fd = Socket(AF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in server_addr = {0};
+    server_addr.sin_family = AF_INET;
+#if defined(HAVE_SIN_LEN) || defined(__FreeBSD__) || defined(__APPLE__)
+    server_addr.sin_len = sizeof(server_addr);
+#endif
+    server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    server_addr.sin_port = htons(PORT);
 
-	memset((void *) &server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
+    Bind(fd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
+    printf("Echo server listening on 127.0.0.1:%d\n", PORT);
+    fflush(stdout);
 
-	#ifdef HAVE_SIN_LEN
-	server_addr.sin_len = sizeof(struct sockaddr_in);
-	#endif
+    char buf[BUFFER_SIZE];
+    for (;;) {
+        struct sockaddr_in client_addr = {0};
+        socklen_t addr_len = sizeof(client_addr);
+        ssize_t len = Recvfrom(fd, buf, sizeof(buf), 0,
+                               (struct sockaddr *)&client_addr, &addr_len);
 
-	server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // INADDR_ANY durch INADDR_LOOPBACK ersetzt
-	server_addr.sin_port = htons(4177);
-
-	Bind(fd, (const struct sockaddr *) &server_addr, sizeof(server_addr));
-
-	for (;;) {
-
-		addr_len = (socklen_t) sizeof(client_addr);
-
-		memset((void *) &client_addr, 0, sizeof(client_addr));
-
-		len = Recvfrom(fd, (void *) buf, sizeof(buf), 0, (struct sockaddr *) &client_addr, &addr_len);
-
-		Sendto(fd, (const void *) buf, (size_t)len, 0, (struct sockaddr *)&client_addr, addr_len);
-	}
-	Close(fd);
-
-	return(0);
+        Sendto(fd, buf, (size_t)len, 0,
+               (const struct sockaddr *)&client_addr, addr_len);
+    }
 }

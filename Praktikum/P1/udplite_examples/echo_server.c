@@ -24,71 +24,45 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <unistd.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "Socket.h"
 
-#define BUFFER_SIZE (1 << 16) // 2^16 65.536	64 KiB
-
-// ./echo_server 20 8 Senden mit Coverage 20 & Empfangen mit Mindest-Coverage 8
+#define BUFFER_SIZE (1 << 16)
+#define PORT 4177
 
 int main(int argc, char **argv)
 {
-	int fd;
-	struct sockaddr_in server_addr, client_addr;
-	socklen_t addr_len;
-	ssize_t len;
-	char buf[BUFFER_SIZE];
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <send_coverage> <recv_coverage>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    int send_coverage = ParseCoverage(argv[1]);
+    int recv_coverage = ParseCoverage(argv[2]);
+    int fd = Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE);
+    SetCoverage(fd, send_coverage, recv_coverage);
 
-	if (argc != 3)
-	{
-		fprintf(stderr,
-				"Usage: %s <send_coverage> <recv_coverage>\n",
-				argv[0]);
-		return 1;
-	}
-
-	int send_coverage = ParseCoverage(argv[1]);
-	int recv_coverage = ParseCoverage(argv[2]);
-
-	fd = Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE);
-
-	Setsockopt(fd, IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV,
-			   &send_coverage, sizeof(send_coverage));
-
-	Setsockopt(fd, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV,
-			   &recv_coverage, sizeof(recv_coverage));
-
-	memset((void *)&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-
-#ifdef HAVE_SIN_LEN
-	server_addr.sin_len = sizeof(struct sockaddr_in);
+    struct sockaddr_in server_addr = {0};
+    server_addr.sin_family = AF_INET;
+#if defined(HAVE_SIN_LEN) || defined(__FreeBSD__) || defined(__APPLE__)
+    server_addr.sin_len = sizeof(server_addr);
 #endif
+    server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    server_addr.sin_port = htons(PORT);
 
-	server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // INADDR_ANY durch INADDR_LOOPBACK ersetzt
-	server_addr.sin_port = htons(4177);
+    Bind(fd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
+    printf("Echo server listening on 127.0.0.1:%d\n", PORT);
+    fflush(stdout);
 
-	Bind(fd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
+    char buf[BUFFER_SIZE];
+    for (;;) {
+        struct sockaddr_in client_addr = {0};
+        socklen_t addr_len = sizeof(client_addr);
+        ssize_t len = Recvfrom(fd, buf, sizeof(buf), 0,
+                               (struct sockaddr *)&client_addr, &addr_len);
 
-	for (;;)
-	{
-
-		addr_len = (socklen_t)sizeof(client_addr);
-
-		memset((void *)&client_addr, 0, sizeof(client_addr));
-
-		len = Recvfrom(fd, (void *)buf, sizeof(buf), 0, (struct sockaddr *)&client_addr, &addr_len);
-
-		printf("Server: %zd Bytes empfangen.\n", len);
-
-		Sendto(fd, (const void *)buf, (size_t)len, 0, (struct sockaddr *)&client_addr, addr_len);
-	}
-	Close(fd);
-
-	return (0);
+        Sendto(fd, buf, (size_t)len, 0,
+               (const struct sockaddr *)&client_addr, addr_len);
+    }
 }

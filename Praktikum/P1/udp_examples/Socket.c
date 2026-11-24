@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
 int Socket(int family, int type, int protocol) {
     int fd = socket(family, type, protocol);
@@ -22,7 +23,10 @@ int Bind(int fd, const struct sockaddr *addr, socklen_t addrlen) {
 }
 
 ssize_t Sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t dest_addrlen) {
-    ssize_t sent_len = sendto(fd, buf, len, flags, dest_addr, dest_addrlen);
+    ssize_t sent_len;
+    do {
+        sent_len = sendto(fd, buf, len, flags, dest_addr, dest_addrlen);
+    } while (sent_len == -1 && errno == EINTR);
     if (sent_len < 0) {
         perror("sendto");
         exit(EXIT_FAILURE);
@@ -31,7 +35,10 @@ ssize_t Sendto(int fd, const void *buf, size_t len, int flags, const struct sock
 }
 
 ssize_t Recvfrom(int fd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *src_addrlen) {
-    ssize_t recv_len = recvfrom(fd, buf, len, flags, src_addr, src_addrlen);
+    ssize_t recv_len;
+    do {
+        recv_len = recvfrom(fd, buf, len, flags, src_addr, src_addrlen);
+    } while (recv_len == -1 && errno == EINTR);
     if (recv_len < 0) {
         perror("recvfrom");
         exit(EXIT_FAILURE);
@@ -57,7 +64,10 @@ int Connect(int fd, const struct sockaddr *addr, socklen_t addrlen) {
 
 
 ssize_t Send(int fd, const void *buf, size_t len, int flags) {
-    ssize_t sent_len = send(fd, buf, len, flags);
+    ssize_t sent_len;
+    do {
+        sent_len = send(fd, buf, len, flags);
+    } while (sent_len == -1 && errno == EINTR);
     if (sent_len < 0) {
         perror("send");
         exit(EXIT_FAILURE);
@@ -66,10 +76,33 @@ ssize_t Send(int fd, const void *buf, size_t len, int flags) {
 }
 
 ssize_t Recv(int fd, void *buf, size_t len, int flags) {
-    ssize_t recv_len = recv(fd, buf, len, flags);
+    ssize_t recv_len;
+    do {
+        recv_len = recv(fd, buf, len, flags);
+    } while (recv_len == -1 && errno == EINTR);
     if (recv_len < 0) {
         perror("recv");
         exit(EXIT_FAILURE);
     }
     return recv_len;
+}
+
+int Setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen) {
+    if (setsockopt(fd, level, optname, optval, optlen) != 0) {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+    return 0;
+}
+
+size_t ParseMessageSize(const char *text) {
+    char *end;
+    errno = 0;
+    long size = strtol(text, &end, 10);
+
+    if (errno != 0 || end == text || *end != '\0' || size < 0 || size > 65536) {
+        fprintf(stderr, "Invalid message size: %s\n", text);
+        exit(EXIT_FAILURE);
+    }
+    return (size_t)size;
 }
