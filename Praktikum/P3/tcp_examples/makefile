@@ -2,7 +2,7 @@ CC = cc
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L
 CFLAGS = -g -std=c11 -Wall -Wextra -Wpedantic
 
-all: client daytime_server discard_server echo_server chargen_server
+all: client daytime_server discard_server echo_server chargen_server getaddresses
 
 client: client.c Socket.c Socket.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ client.c Socket.c
@@ -19,7 +19,10 @@ echo_server: echo_server.c Socket.c Socket.h
 chargen_server: chargen_server.c Socket.c Socket.h ChargenOutput.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ chargen_server.c Socket.c
 
+getaddresses: getaddresses.c Socket.c Socket.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread -o $@ getaddresses.c Socket.c
+
 clean:
-	rm -f client daytime_server discard_server echo_server chargen_server
+	rm -f client daytime_server discard_server echo_server chargen_server getaddresses
 
 .PHONY: all clean
